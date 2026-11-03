@@ -1,0 +1,5 @@
+{
+  "name": "AI Evaluator",
+  "description": "Answer-key based exam evaluation for faculty and students, with blueprint extraction, cached grading, scanned-PDF OCR, faculty approval and student queries.",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Evaluator (Gemini) — Faculty & Student Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{
+  --bg:#F3F5F7; --surface:#FFFFFF; --surface2:#E9EDF1; --ink:#1D2B3A; --muted:#5B6878; --line:#D3DAE1;
+  --pencil:#B3261E; --pencil-soft:#FBE9E7; --ok:#2E7D4F; --ok-soft:#E5F3EA; --warn:#9A6212; --warn-soft:#FBF1DC;
+  --info:#2B5C9E; --info-soft:#E4EDF8; --violet:#6A4C9C; --violet-soft:#EEE8F6;
+  color-scheme:light;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121820; --surface:#1A222D; --surface2:#232D3A; --ink:#E6EBF0; --muted:#9AA7B5; --line:#334050;
+  --pencil:#F2867C; --pencil-soft:#3A2220; --ok:#6CC892; --ok-soft:#1C3326; --warn:#E7B661; --warn-soft:#3A2E17;
+  --info:#8DB4EA; --info-soft:#1D2B40; --violet:#B9A2E3; --violet-soft:#2B2340; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#121820; --surface:#1A222D; --surface2:#232D3A; --ink:#E6EBF0; --muted:#9AA7B5; --line:#334050;
+  --pencil:#F2867C; --pencil-soft:#3A2220; --ok:#6CC892; --ok-soft:#1C3326; --warn:#E7B661; --warn-soft:#3A2E17;
+  --info:#8DB4EA; --info-soft:#1D2B40; --violet:#B9A2E3; --violet-soft:#2B2340; color-scheme:dark;}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+h1,h2,h3{font-family:"Source Serif 4",Georgia,serif;font-weight:600;line-height:1.2;margin:0 0 .4em}
+h1{font-size:1.45rem} h2{font-size:1.3rem} h3{font-size:1.05rem}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.bar{max-width:1180px;margin:0 auto;padding:.7rem 1rem;display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:.6rem;margin-right:auto}
+.brand .mark{width:30px;height:30px;border-radius:50%;border:2.5px solid var(--pencil);display:grid;place-items:center;color:var(--pencil);font-weight:700;font-family:"Source Serif 4",serif;transform:rotate(-8deg)}
+.brand b{font-family:"Source Serif 4",serif;font-size:1.15rem}
+.seg{display:inline-flex;background:var(--surface2);border-radius:999px;padding:3px}
+.seg button{border:0;background:transparent;color:var(--muted);padding:.4rem .9rem;border-radius:999px;font:inherit;font-weight:600;cursor:pointer}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+nav.tabs{max-width:1180px;margin:0 auto;padding:0 1rem;display:flex;gap:.2rem;overflow-x:auto}
+nav.tabs button{border:0;background:none;font:inherit;color:var(--muted);padding:.6rem .8rem;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap;font-weight:600}
+nav.tabs button.on{color:var(--ink);border-color:var(--pencil)}
+main{max-width:1180px;margin:0 auto;padding:1.2rem 1rem 3rem}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:1.1rem;margin-bottom:1rem}
+.grid{display:grid;gap:1rem}
+.g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.8rem;margin-bottom:1rem}
+.stat{border-radius:10px;padding:.9rem 1rem;border:1px solid var(--line);background:var(--surface);border-left:5px solid var(--c)}
+.stat .n{font-family:"Source Serif 4",serif;font-size:2rem;font-weight:700;color:var(--c);line-height:1}
+.stat .l{color:var(--muted);font-size:.88rem;margin-top:.3rem}
+label{display:block;font-weight:600;font-size:.9rem;margin:.6rem 0 .25rem}
+input[type=text],input[type=number],textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:.5rem .6rem}
+textarea{min-height:130px;resize:vertical;font-size:.88rem}
+input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+.btn{font:inherit;font-weight:600;border-radius:7px;padding:.5rem .95rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.btn.red{background:var(--pencil);border-color:var(--pencil);color:#fff}
+.btn.green{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.sm{padding:.3rem .6rem;font-size:.85rem}
+.row{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.muted{color:var(--muted)} .small{font-size:.85rem}
+.pill{display:inline-block;font-size:.78rem;font-weight:700;padding:.12rem .55rem;border-radius:999px;background:var(--surface2);color:var(--muted)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.info{background:var(--info-soft);color:var(--info)} .pill.red{background:var(--pencil-soft);color:var(--pencil)}
+.pill.violet{background:var(--violet-soft);color:var(--violet)}
+.note{border-radius:8px;padding:.7rem .9rem;margin:.6rem 0;font-size:.9rem;border-left:4px solid var(--c);background:var(--s)}
+.note.ok{--c:var(--ok);--s:var(--ok-soft)} .note.warn{--c:var(--warn);--s:var(--warn-soft)}
+.note.info{--c:var(--info);--s:var(--info-soft)} .note.red{--c:var(--pencil);--s:var(--pencil-soft)}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:.82rem}
+.step{display:flex;gap:.7rem;align-items:baseline;margin-bottom:.4rem}
+.step .num{width:26px;height:26px;flex:none;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:.85rem;background:var(--ink);color:var(--surface)}
+.score{font-family:"Source Serif 4",serif;font-weight:700;color:var(--pencil)}
+.bigscore{font-family:"Source Serif 4",serif;font-size:2.6rem;font-weight:700;color:var(--pencil);line-height:1}
+.q{border:1px solid var(--line);border-radius:9px;padding:.85rem;margin-bottom:.8rem;background:var(--surface)}
+.q.notcounted{opacity:.7;border-style:dashed}
+.qhead{display:flex;justify-content:space-between;gap:.6rem;align-items:baseline;flex-wrap:wrap}
+.answer{white-space:pre-wrap;background:var(--bg);border-radius:7px;padding:.6rem;font-size:.86rem;max-height:220px;overflow:auto;border:1px solid var(--line)}
+.crit{display:grid;grid-template-columns:1fr 92px;gap:.6rem;padding:.5rem 0;border-top:1px dashed var(--line)}
+.crit input{width:80px}
+.evidence{font-size:.82rem;color:var(--muted);font-style:italic}
+.list-item{display:flex;justify-content:space-between;gap:.8rem;align-items:center;padding:.65rem .2rem;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.list-item:last-child{border-bottom:0}
+.thread{border-left:3px solid var(--line);padding-left:.8rem;margin:.5rem 0}
+.msg{margin:.35rem 0;font-size:.9rem}
+.msg b{font-size:.82rem}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--pencil);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spinner{animation:none}}
+.log{font-size:.85rem;max-height:200px;overflow:auto}
+.log div{padding:.15rem 0}
+details summary{cursor:pointer;font-weight:600}
+.hidden{display:none}
+.banner{background:var(--warn-soft);color:var(--warn);font-size:.85rem;text-align:center;padding:.35rem}
+</style>
+</head>
+<body>
+<div id="banner" class="banner hidden"></div>
+<header class="top">
+  <div class="bar">
+    <div class="brand"><div class="mark">✓</div><div><b>AI Evaluator</b><div class="small muted">Answer-key grading with faculty approval, powered by Gemini</div></div></div>
+    <div class="seg" role="tablist" aria-label="Sign in as">
+      <button id="roleF" class="on" onclick="setRole('faculty')">Faculty</button>
+      <button id="roleS" onclick="setRole('student')">Student</button>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs"></nav>
+</header>
+<main id="app"><p class="muted"><span class="spinner"></span> Loading…</p></main>
+
+<script>
+/* ============================ CONFIG ============================ */
+const PROMPT_VERSION = "eval-v1";
+const BP_VERSION = "bp-v1";
+
+/* ============================ GEMINI ADAPTER ============================
+   The API key is NEVER typed into the page. Two ways the page reaches Gemini:
+   1. Google AI Studio (Build): the platform supplies process.env.GEMINI_API_KEY /
+      process.env.API_KEY to the app, and the page calls Gemini directly with it.
+   2. Netlify (or any host with the bundled function): the page calls /api/gemini,
+      a serverless function that reads GEMINI_API_KEY from the server environment.
+   Model roles: extraction (Call 1, most capable), evaluation (Call 2, fast/cheap), OCR (vision). */
+const GEMINI_BASE="https://generativelanguage.googleapis.com/v1beta";
+const MODEL_PREF_KEY="aieval:models";
+let GDEFAULT={extract:"gemini-pro-latest",eval:"gemini-flash-latest",ocr:"gemini-flash-latest"};
+const GMODE={mode:"none",detail:""};
+function envKey(){
+  try{ if(typeof process!=="undefined" && process.env){ return process.env.GEMINI_API_KEY || process.env.API_KEY || ""; } }catch(e){}
+  return "";
+}
+function loadCfg(){ try{ return {...GDEFAULT,...JSON.parse(localStorage.getItem(MODEL_PREF_KEY)||"{}")}; }catch(e){ return {...GDEFAULT}; } }
+function saveCfg(c){ try{ localStorage.setItem(MODEL_PREF_KEY,JSON.stringify(c)); }catch(e){} }
+const USAGE={calls:0,inTok:0,outTok:0,cached:0,byModel:{}};
+const blobB64=b=>new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(",")[1]); r.onerror=()=>rej(new Error("Couldn't read image")); r.readAsDataURL(b); });
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+async function detectGemini(){
+  const k=envKey();
+  if(k){ GMODE.mode="studio"; GMODE.detail="Google AI Studio: key supplied by the platform"; return; }
+  try{
+    const r=await fetch("/api/gemini",{method:"GET",headers:{"Accept":"application/json"}});
+    if(r.ok){
+      const d=await r.json();
+      if(d.defaults) GDEFAULT={...GDEFAULT,...d.defaults};
+      if(d.configured){ GMODE.mode="server"; GMODE.detail="Server function: key read from the GEMINI_API_KEY environment variable"; return; }
+      GMODE.mode="none"; GMODE.detail="The server function is running, but GEMINI_API_KEY isn't set in the hosting environment."; return;
+    }
+  }catch(e){}
+  GMODE.mode="none"; GMODE.detail="No Gemini backend found. Deploy to Netlify with GEMINI_API_KEY set, or run inside Google AI Studio.";
+}
+async function geminiRequest(model,body){
+  if(GMODE.mode==="studio"){
+    return fetch(`${GEMINI_BASE}/models/${encodeURIComponent(model)}:generateContent`,
+      {method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":envKey()},body:JSON.stringify(body)});
+  }
+  return fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model,payload:body})});
+}
+async function listModels(){
+  const r = GMODE.mode==="studio"
+    ? await fetch(`${GEMINI_BASE}/models?pageSize=200`,{headers:{"x-goog-api-key":envKey()}})
+    : await fetch("/api/gemini?models=1");
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.error?.message||d.error||r.statusText);
+  return (d.models||[]).map(m=>m.name.replace(/^models\//,""));
+}
+function makeGemini(){
+  if(GMODE.mode==="none") return null;
+  const cfg=loadCfg();
+  async function call(prompt,{images=[],json=false,model}){
+    const parts=[{text:prompt}];
+    for(const b of images) parts.push({inline_data:{mime_type:b.type||"image/jpeg",data:await blobB64(b)}});
+    const body={contents:[{role:"user",parts}],generationConfig:{temperature:0,...(json?{responseMimeType:"application/json"}:{})}};
+    let lastErr;
+    for(let attempt=0;attempt<4;attempt++){
+      let res;
+      try{ res=await geminiRequest(model,body); }
+      catch(e){ lastErr={code:"network",message:"Couldn't reach Gemini. Check your connection."}; await sleep(1500*(attempt+1)); continue; }
+      if(res.status===429||res.status>=500){ lastErr={code:"gemini_"+res.status,message:res.status===429?"Gemini rate limit reached. Wait a minute and retry.":"Gemini server error. Retry shortly."}; await sleep(2000*Math.pow(2,attempt)); continue; }
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok) throw {code:"gemini_"+res.status,message:"Gemini: "+(data.error?.message||data.error||res.statusText)};
+      const cand=data.candidates?.[0];
+      if(!cand||!cand.content) throw {code:"blocked",message:"Gemini returned no answer"+(data.promptFeedback?.blockReason?" ("+data.promptFeedback.blockReason+")":cand?.finishReason?" ("+cand.finishReason+")":"")};
+      const u=data.usageMetadata||{};
+      USAGE.calls++; USAGE.inTok+=u.promptTokenCount||0; USAGE.outTok+=(u.candidatesTokenCount||0)+(u.thoughtsTokenCount||0); USAGE.cached+=u.cachedContentTokenCount||0;
+      USAGE.byModel[model]=(USAGE.byModel[model]||0)+1;
+      return (cand.content.parts||[]).map(p=>p.thought?"":(p.text||"")).join("");
+    }
+    throw lastErr;
+  }
+  const pick=t=>{ const c=loadCfg(); return t==="complex"?c.extract : t==="ocr"?c.ocr : c.eval; };
+  const s=async(input,opts={})=>({text:await call(input,{images:opts.images?[].concat(opts.images):[],model:pick(opts.modelTier)}),truncated:false});
+  s.json=async(input,opts={})=>{
+    const t=await call(input,{json:true,model:pick(opts.modelTier)});
+    try{ return JSON.parse(t.replace(/```json|```/g,"").trim()); }
+    catch(e){ throw {code:"bad_json",message:"Gemini's reply wasn't valid JSON. Try again."}; }
+  };
+  // Netlify functions accept ~6 MB per request, so keep OCR batches small.
+  s.limits=async()=>({maxPromptBytes:4e6,images:{maxCount:GMODE.mode==="server"?2:3,maxInputBytes:2e7,mediaTypes:["image/jpeg","image/png","image/webp"]}});
+  return s;
+}
+
+/* ============================ STATE ============================ */
+const S = {
+  role:"faculty", tab:"dashboard", db:null, sample:null,
+  cache:{blueprints:{},evals:{},queries:{},ocr:{}},
+  work:{qp:"",key:"",bp:null,bpCached:false,busy:false,log:[]},
+  reviewKey:null, studentId:"", ready:false
+};
+
+/* ============================ STORAGE LAYER ============================
+   Uses the shared artifact database when available; otherwise falls back
+   to this browser's storage so the prototype still runs. */
+const LS = "aieval:";
+const Store = {
+  async list(col){
+    if(S.db){
+      try{ const snap = await S.db.collection(col).get(); const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); return o; }
+      catch(e){ console.warn(e); }
+    }
+    try{ return JSON.parse(localStorage.getItem(LS+col)||"{}"); }catch(e){ return S.cache[col]||{}; }
+  },
+  async set(col,id,data){
+    S.cache[col][id]=data;
+    if(S.db){ try{ await S.db.doc(col+"/"+id).set(data); return; }catch(e){ console.warn(e); toast("Couldn't save to the shared database ("+(e.code||"error")+"). Kept locally."); } }
+    try{ localStorage.setItem(LS+col, JSON.stringify(S.cache[col])); }catch(e){}
+  }
+};
+async function loadAll(){
+  for(const c of ["blueprints","evals","queries","ocr"]) S.cache[c] = await Store.list(c);
+}
+
+/* ============================ UTILITIES ============================ */
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const normText = s => String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+async function sha(s){
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+const num = v => { const n = Number(v); return isFinite(n)? n : 0; };
+const r2 = n => Math.round(n*100)/100;
+function toast(msg){ const b=document.getElementById("banner"); b.textContent=msg; b.classList.remove("hidden"); clearTimeout(toast.t); toast.t=setTimeout(()=>b.classList.add("hidden"),6000); }
+function log(msg,kind="info"){ S.work.log.unshift({msg,kind,t:new Date().toLocaleTimeString()}); render(); }
+
+/* ---------- File reading: text PDFs, scanned PDFs (page images -> OCR), and photos ----------
+   Each PDF page is checked on its own: pages with a usable text layer are read directly
+   (free); pages without one are rendered to images and transcribed by the vision model.
+   OCR output is cached by the file's hash, so the same scan is never transcribed twice. */
+const OCR_VERSION="ocr-v1";
+async function shaBuf(buf){ const b=await crypto.subtle.digest("SHA-256",buf); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+function ocrPrompt(n,startPage){
+return `You are transcribing ${n} scanned exam page image(s), in order, starting at page ${startPage}. They may be printed or handwritten.
+RULES
+- Transcribe exactly what is written. Do not correct spelling, grammar, numbers or answers.
+- Keep question labels (Q1, 2(b), Ans 3, Section B, OR) at the start of their own line, exactly as written.
+- Keep line breaks, lists, equations and working steps. Write maths in plain text (e.g. 60/1.1^2).
+- Tables: one row per line, cells separated by " | ".
+- Diagrams or graphs: write [diagram: short description of what is drawn and labelled].
+- Words you cannot read: [illegible]. Struck-out text: leave it out.
+- Ignore page borders, stamps and margin marks that are not answers.
+- Output ONLY the transcription. Put a line containing exactly <<<PAGE>>> between pages. No commentary.`;
+}
+async function canvasBlob(canvas){ return await new Promise(r=>canvas.toBlob(r,"image/jpeg",0.82)); }
+async function ocrBlobs(blobs,label,startPage=1){
+  if(!S.sample) throw new Error("Scanned pages need Gemini, which isn't connected yet.");
+  const lim=await S.sample.limits();
+  if(!lim.images) throw new Error("Image transcription isn't available in this view.");
+  const per=Math.max(1,Math.min(3,lim.images.maxCount||1));
+  const out=[];
+  for(let i=0;i<blobs.length;i+=per){
+    const batch=blobs.slice(i,i+per);
+    log(`${label}: transcribing page ${startPage+i}${batch.length>1?"–"+(startPage+i+batch.length-1):""} of ${startPage+blobs.length-1}…`);
+    const res=await S.sample(ocrPrompt(batch.length,startPage+i),{images:batch,modelTier:"ocr"});
+    const parts=res.text.split(/^\s*<<<PAGE>>>\s*$/m);
+    batch.forEach((_,k)=>out.push((parts[k]??(k===0?res.text:"")).trim()));
+  }
+  return out;
+}
+async function readFile(file){
+  const name=file.name.toLowerCase();
+  const isImg=/\.(png|jpe?g|webp)$/.test(name);
+  if(!isImg && !name.endsWith(".pdf")) return await file.text();
+  const buf=await file.arrayBuffer();
+  const h=await shaBuf(new TextEncoder().encode(OCR_VERSION).buffer.byteLength? await (async()=>{const a=new Uint8Array(buf.byteLength+OCR_VERSION.length);a.set(new TextEncoder().encode(OCR_VERSION));a.set(new Uint8Array(buf),OCR_VERSION.length);return a.buffer;})():buf);
+  if(S.cache.ocr[h]){ log(`${file.name}: transcription found in cache, no OCR call needed.`,"ok"); return S.cache.ocr[h].text; }
+  if(isImg){
+    const [t]=await ocrBlobs([new Blob([buf],{type:file.type||"image/jpeg"})],file.name);
+    await Store.set("ocr",h,{text:t,file:file.name,pages:1,scanned:1,at:Date.now()});
+    log(`${file.name}: photo transcribed. Check the text below before evaluating.`,"ok");
+    return t;
+  }
+  if(!window.pdfjsLib) throw new Error("PDF reader didn't load. Reload the page or paste the text instead.");
+  pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  const pdf=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
+  const pages=new Array(pdf.numPages).fill(""); const scanned=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p); const tc=await page.getTextContent();
+    let txt="",lastY=null,line="";
+    for(const it of tc.items){ const y=it.transform[5]; if(lastY!==null&&Math.abs(y-lastY)>2){ txt+=line+"\n"; line=""; } line+=it.str; lastY=y; }
+    txt+=line;
+    if(txt.replace(/\s/g,"").length>=40) pages[p-1]=txt;
+    else{
+      const vp1=page.getViewport({scale:1}); const scale=Math.min(2.5,1700/vp1.width);
+      const vp=page.getViewport({scale}); const c=document.createElement("canvas");
+      c.width=Math.ceil(vp.width); c.height=Math.ceil(vp.height);
+      const ctx=c.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,c.width,c.height);
+      await page.render({canvasContext:ctx,viewport:vp}).promise;
+      scanned.push({idx:p-1,blob:await canvasBlob(c)}); c.width=c.height=0;
+    }
+  }
+  if(scanned.length){
+    log(`${file.name}: ${scanned.length} of ${pdf.numPages} page(s) are scanned images. Transcribing them…`,"warn");
+    // OCR consecutive runs so page numbers in prompts stay accurate
+    let i=0;
+    while(i<scanned.length){
+      let j=i; while(j+1<scanned.length&&scanned[j+1].idx===scanned[j].idx+1) j++;
+      const run=scanned.slice(i,j+1);
+      const texts=await ocrBlobs(run.map(r=>r.blob),file.name,run[0].idx+1);
+      run.forEach((r,k)=>pages[r.idx]=texts[k]||"");
+      i=j+1;
+    }
+  }
+  const text=pages.join("\n\n");
+  if(text.trim().length<10) throw new Error("No readable text found in this PDF.");
+  await Store.set("ocr",h,{text,file:file.name,pages:pdf.numPages,scanned:scanned.length,at:Date.now()});
+  if(scanned.length) log(`${file.name}: transcription done. Check the text below for misreads before continuing.`,"ok");
+  return text;
+}
+
+/* ============================ CALL 1: BLUEPRINT EXTRACTION ============================ */
+function extractionPrompt(qp,key){
+return `You are a meticulous exam-paper parser. Convert the QUESTION PAPER and ANSWER KEY into one JSON blueprint.
+Return ONLY JSON in exactly this shape:
+{"exam_title":string,"printed_max_marks":number,
+ "sections":[{"section_id":string,"title":string,"instructions":string,
+   "selection_rule":{"type":"all"|"any_n","n":number|null},
+   "questions":[{"question_id":string,"max_marks":number,
+     "alternatives":[{"alt_id":string,"text":string,
+        "answer_key":{"model_answer":string,"criteria":[{"id":string,"point":string,"marks":number}]}}]}]}],
+ "extraction_warnings":[string]}
+
+RULES
+1. Keep the paper's numbering exactly (e.g. "1", "Q2", "A3", "4(b)"). question_id must be unique.
+2. If the paper has no sections, create one section "Main".
+3. Section instructions like "Answer any 3", "Attempt any two" => selection_rule {"type":"any_n","n":3}. Otherwise {"type":"all","n":null}.
+4. An internal choice ("5(a) OR 5(b)", "Q6 OR Q7") becomes ONE question whose "alternatives" array holds each option. A question with no choice still has exactly one alternative (alt_id = question_id).
+5. Copy marks exactly as printed next to each question. Never guess marks; if missing, add a warning.
+6. Sub-parts (a),(b),(c) that must ALL be answered stay inside one alternative: put each sub-part's points as separate criteria, prefixing the point with the sub-part label.
+7. printed_max_marks = the "Maximum Marks"/"Total Marks" printed on the paper header. If not printed, use null and add a warning.
+8. From the answer key, split each answer into atomic, checkable criteria. The criteria marks of every alternative MUST sum exactly to that question's max_marks. Use the key's own mark split when given. If the key gives no split, use one criterion worth full marks.
+9. criteria ids: "<alt_id>.c1", "<alt_id>.c2", ...
+10. model_answer: the key's answer text, trimmed but faithful. Do not add content that is not in the key.
+11. List any ambiguity in extraction_warnings.
+
+QUESTION PAPER:
+<<<
+${qp}
+>>>
+
+ANSWER KEY:
+<<<
+${key}
+>>>`;
+}
+
+function normalizeBlueprint(raw){
+  const bp = {exam_title:raw.exam_title||"Untitled exam", printed_max_marks: raw.printed_max_marks==null?null:num(raw.printed_max_marks),
+    sections:[], extraction_warnings: Array.isArray(raw.extraction_warnings)?raw.extraction_warnings:[]};
+  (raw.sections||[]).forEach((s,si)=>{
+    const rule = s.selection_rule||{type:"all"};
+    const sec = {section_id:String(s.section_id||("S"+(si+1))), title:s.title||"", instructions:s.instructions||"",
+      selection_rule:{type: rule.type==="any_n"?"any_n":"all", n: rule.type==="any_n"? num(rule.n): null}, questions:[]};
+    (s.questions||[]).forEach((q,qi)=>{
+      const qid = String(q.question_id||(sec.section_id+"-"+(qi+1)));
+      let alts = Array.isArray(q.alternatives)&&q.alternatives.length? q.alternatives : [{alt_id:qid,text:q.text||"",answer_key:q.answer_key||{}}];
+      sec.questions.push({question_id:qid, max_marks:num(q.max_marks),
+        alternatives: alts.map((a,ai)=>{
+          const altId=String(a.alt_id||(alts.length>1? qid+String.fromCharCode(97+ai): qid));
+          const ak=a.answer_key||{};
+          return {alt_id:altId, text:a.text||"", answer_key:{model_answer:ak.model_answer||"",
+            criteria:(ak.criteria||[]).map((c,ci)=>({id:String(c.id||(altId+".c"+(ci+1))), point:c.point||"", marks:num(c.marks)}))}};
+        })});
+    });
+    bp.sections.push(sec);
+  });
+  return bp;
+}
+
+/* Deterministic totals: the LLM never adds up marks. */
+function sectionMax(sec){
+  const m = sec.questions.map(q=>q.max_marks);
+  if(sec.selection_rule.type==="any_n"){
+    const n = sec.selection_rule.n||m.length;
+    if(n>m.length) return {max:m.reduce((a,b)=>a+b,0), err:`Section ${sec.section_id}: asks for ${n} questions but only ${m.length} exist`};
+    return {max:[...m].sort((a,b)=>b-a).slice(0,n).reduce((a,b)=>a+b,0)};
+  }
+  return {max:m.reduce((a,b)=>a+b,0)};
+}
+function validateBlueprint(bp){
+  const errors=[], warnings=[...(bp.extraction_warnings||[])];
+  const ids=new Set();
+  bp.sections.forEach(sec=>{
+    if(sec.selection_rule.type==="any_n"){
+      const m=sec.questions.map(q=>q.max_marks); if(new Set(m).size>1) warnings.push(`Section ${sec.section_id}: "any ${sec.selection_rule.n}" questions carry different marks; the best ${sec.selection_rule.n} will count.`);
+    }
+    sec.questions.forEach(q=>{
+      if(ids.has(q.question_id)) errors.push(`Duplicate question id ${q.question_id}`); ids.add(q.question_id);
+      if(!q.max_marks) errors.push(`${q.question_id}: marks are missing or zero`);
+      q.alternatives.forEach(a=>{
+        const cs=r2(a.answer_key.criteria.reduce((s,c)=>s+c.marks,0));
+        if(!a.answer_key.criteria.length) errors.push(`${a.alt_id}: answer key has no criteria`);
+        else if(cs!==r2(q.max_marks)) errors.push(`${a.alt_id}: criteria add to ${cs}, but the question carries ${q.max_marks}`);
+      });
+    });
+  });
+  let computed=0;
+  bp.sections.forEach(sec=>{ const r=sectionMax(sec); computed+=r.max; if(r.err) errors.push(r.err); });
+  computed=r2(computed);
+  if(bp.printed_max_marks==null) errors.push("Maximum marks not found on the question paper.");
+  else if(computed!==r2(bp.printed_max_marks)) errors.push(`Questions add up to ${computed}, but the paper says maximum marks ${bp.printed_max_marks}.`);
+  return {computed, errors, warnings};
+}
+
+async function extractBlueprint(){
+  const w=S.work;
+  if(!w.qp.trim()||!w.key.trim()){ toast("Add both the question paper and the answer key."); return; }
+  const qpH=await sha(normText(w.qp)), keyH=await sha(normText(w.key));
+  const id=await sha(BP_VERSION+qpH+keyH);
+  const hit=S.cache.blueprints[id];
+  if(hit){ w.bp=hit; w.bpCached=true; log("Blueprint found in cache, no extraction call needed.","ok"); return; }
+  if(!S.sample){ toast("Gemini isn't connected. Set GEMINI_API_KEY on the server."); setTab("settings"); return; }
+  w.busy=true; log("Call 1: extracting blueprint from question paper and answer key…");
+  try{
+    const raw = await S.sample.json(extractionPrompt(w.qp,w.key),{modelTier:"complex"});
+    const bp = normalizeBlueprint(raw);
+    const v = validateBlueprint(bp);
+    const rec = {id, qpHash:qpH, keyHash:keyH, ...bp, computed_max_marks:v.computed, errors:v.errors, warnings:v.warnings,
+      status: v.errors.length? "mismatch":"valid", verified:false, createdAt:Date.now()};
+    await Store.set("blueprints",id,rec);
+    w.bp=rec; w.bpCached=false;
+    log(v.errors.length? "Blueprint extracted with issues. Review below before evaluating.":"Blueprint extracted and totals check out.", v.errors.length?"warn":"ok");
+  }catch(e){ log("Extraction failed: "+(e.message||e.code||e),"red"); }
+  finally{ w.busy=false; render(); }
+}
+
+async function saveBlueprintJSON(){
+  const ta=document.getElementById("bpjson"); let raw;
+  try{ raw=JSON.parse(ta.value); }catch(e){ toast("That JSON isn't valid: "+e.message); return; }
+  const bp=normalizeBlueprint(raw); const v=validateBlueprint(bp); const old=S.work.bp;
+  const rec={...old,...bp,computed_max_marks:v.computed,errors:v.errors,warnings:v.warnings,status:v.errors.length?"mismatch":"valid",verified:false,editedAt:Date.now()};
+  await Store.set("blueprints",rec.id,rec); S.work.bp=rec; log("Blueprint edits saved and re-validated.", v.errors.length?"warn":"ok");
+}
+async function confirmBlueprint(){
+  const bp=S.work.bp; if(!bp) return;
+  if(bp.errors.length && !confirm("This blueprint still has totalling issues. Confirm it as faculty-verified anyway?")) return;
+  bp.verified=true; bp.status = bp.errors.length? "faculty_verified":"valid"; bp.verifiedAt=Date.now();
+  await Store.set("blueprints",bp.id,bp); log("Blueprint confirmed. You can now evaluate any number of scripts against it.","ok");
+}
+
+/* ============================ RAG: LOCAL VECTOR INDEX ============================
+   Each answer-key alternative is a chunk, vectorised with TF-IDF. Unlabelled
+   student answers are routed to the closest chunk by cosine similarity, so only
+   relevant key chunks are sent to the grader. */
+const STOP=new Set("the a an of and or to in is are was for on with as by be this that it its at from which what how why explain describe give write any two three".split(" "));
+const toks = s => normText(s).split(" ").filter(t=>t.length>2&&!STOP.has(t));
+function buildIndex(bp){
+  const chunks=[];
+  bp.sections.forEach(sec=>sec.questions.forEach(q=>q.alternatives.forEach(a=>{
+    chunks.push({qid:q.question_id, alt:a.alt_id, toks:toks(a.text+" "+a.answer_key.model_answer+" "+a.answer_key.criteria.map(c=>c.point).join(" "))});
+  })));
+  const df={}; chunks.forEach(c=>new Set(c.toks).forEach(t=>df[t]=(df[t]||0)+1));
+  const N=chunks.length, idf=t=>Math.log((N+1)/((df[t]||0)+1))+1;
+  const vec = ts=>{ const v={}; ts.forEach(t=>v[t]=(v[t]||0)+1); let n=0; for(const t in v){ v[t]*=idf(t); n+=v[t]*v[t]; } n=Math.sqrt(n)||1; for(const t in v) v[t]/=n; return v; };
+  chunks.forEach(c=>c.v=vec(c.toks));
+  return {chunks, query(text){ const qv=vec(toks(text)); let best=null; chunks.forEach(c=>{ let s=0; for(const t in qv) if(c.v[t]) s+=qv[t]*c.v[t]; if(!best||s>best.s) best={...c,s}; }); return best; }};
+}
+const labelKey = s => String(s).toLowerCase().replace(/^(q(uestion)?|ans(wer)?)[\s.:#-]*/,"").replace(/[^a-z0-9]/g,"");
+function segmentScript(script, bp){
+  const map={};
+  const qnums={};
+  bp.sections.forEach(sec=>sec.questions.forEach(q=>{
+    map[labelKey(q.question_id)]={qid:q.question_id};
+    q.alternatives.forEach(a=>{ map[labelKey(a.alt_id)]={qid:q.question_id, alt:a.alt_id}; });
+    const d=String(q.question_id).replace(/\D/g,""); if(d){ qnums[d]=qnums[d]?"dup":{qid:q.question_id}; }
+  }));
+  Object.entries(qnums).forEach(([d,v])=>{ if(v!=="dup"&&!map[d]) map[d]=v; });
+  const hdr=/^\s*((?:q(?:uestion)?|ans(?:wer)?)?\s*[.:#-]?\s*[a-z]?\s*\d+\s*(?:\(?[a-z]\)?)?)\s*[.):\-]?\s+(.*)$/i;
+  const segs=[]; let cur={label:null,lines:[]};
+  script.split(/\r?\n/).forEach(line=>{
+    const m=line.match(hdr);
+    const hasPrefix = m && /^\s*(q|ans)/i.test(m[1]);
+    if(m && (hasPrefix || map[labelKey(m[1])])){ if(cur.lines.join("").trim()) segs.push(cur); cur={label:m[1].trim(),lines:[m[2]]}; }
+    else cur.lines.push(line);
+  });
+  if(cur.lines.join("").trim()) segs.push(cur);
+  const idx=buildIndex(bp); const out={}; const routing=[];
+  segs.forEach(sg=>{
+    const text=sg.lines.join("\n").trim(); let hit=sg.label?map[labelKey(sg.label)]:null; let how="label";
+    if(!hit){ const b=idx.query(text); if(b&&b.s>0.08){ hit={qid:b.qid,alt:b.alt}; how="similarity "+b.s.toFixed(2);} }
+    if(!hit){ routing.push({label:sg.label||"(unlabelled)",to:null}); return; }
+    routing.push({label:sg.label||"(unlabelled)",to:hit.alt||hit.qid,how});
+    const o=out[hit.qid]||(out[hit.qid]={text:"",altHint:null});
+    o.text+=(o.text?"\n\n":"")+text; if(hit.alt) o.altHint=hit.alt;
+  });
+  return {answers:out, routing};
+}
+
+/* ============================ CALL 2: EVALUATION ============================ */
+function evalPrompt(items){
+return `You are a fair, consistent examiner. Grade each student answer ONLY against its answer-key criteria.
+
+GRADING RULES
+- Award a criterion's marks when the student's answer conveys that point, even in different words (meaning, not keyword matching).
+- Award part of a criterion only when the answer partly covers it; use steps of 0.5. Never exceed a criterion's marks.
+- Do not award marks for anything outside the criteria, however impressive. Do not deduct for grammar or spelling.
+- A wrong final answer in a calculation can still earn method marks if the criteria list method steps.
+- When a question has alternatives, decide which alternative the student answered (use alt_hint when given) and grade only that one.
+- "evidence" must be an exact short quote (max 20 words) copied from the student answer, or null if nothing supports the criterion.
+- Keep "reason" under 15 words. "feedback" is 1-2 sentences addressed to the student.
+
+Return ONLY JSON:
+{"results":[{"question_id":string,"alt_id":string,"criteria_scores":[{"id":string,"awarded":number,"evidence":string|null,"reason":string}],"feedback":string}],
+ "overall_feedback":string}
+
+ITEMS
+${JSON.stringify(items)}`;
+}
+
+function scoreEvaluation(bp, questions){
+  // questions: array with awarded per question; applies any-N rules in code.
+  let total=0;
+  bp.sections.forEach(sec=>{
+    const qs=questions.filter(x=>x.section_id===sec.section_id);
+    qs.forEach(x=>{ x.awarded=r2(Math.min(x.max, x.criteria.reduce((s,c)=>s+Math.max(0,Math.min(c.max,num(c.awarded))),0))); x.counted=false; });
+    let counted = qs;
+    if(sec.selection_rule.type==="any_n"){ counted=[...qs].filter(x=>x.attempted).sort((a,b)=>b.awarded-a.awarded).slice(0,sec.selection_rule.n); }
+    counted.forEach(x=>{ x.counted=true; total+=x.awarded; });
+  });
+  const max = bp.printed_max_marks ?? bp.computed_max_marks;
+  return {total:r2(Math.min(total,max)), max};
+}
+
+async function evaluateScripts(){
+  const bp=S.work.bp; if(!bp||!bp.verified){ toast("Confirm the blueprint first."); return; }
+  const files=document.getElementById("scriptFiles").files;
+  const jobs=[];
+  if(files.length){ for(const f of files){ try{ jobs.push({sid:f.name.replace(/\.[^.]+$/,""), name:"", text:await readFile(f)}); }catch(e){ log(f.name+": "+e.message,"red"); } } }
+  else{
+    const sid=document.getElementById("sid").value.trim(), name=document.getElementById("sname").value.trim(), text=document.getElementById("stext").value;
+    if(!sid||!text.trim()){ toast("Add a roll number and the student's answer script."); return; }
+    jobs.push({sid,name,text});
+  }
+  S.work.busy=true; render();
+  for(const j of jobs) await evaluateOne(bp,j);
+  S.work.busy=false; render();
+}
+
+async function evaluateOne(bp,{sid,name,text}){
+  const scriptHash=await sha(normText(text));
+  const key=await sha(PROMPT_VERSION+bp.id+scriptHash+sid);
+  if(S.cache.evals[key]){ log(`${sid}: identical script already evaluated. Loaded from cache, no AI call.`,"ok"); return; }
+  if(!S.sample){ toast("Gemini isn't connected. Set GEMINI_API_KEY on the server."); return; }
+  const {answers,routing}=segmentScript(text,bp);
+  const items=[];
+  bp.sections.forEach(sec=>sec.questions.forEach(q=>{
+    const a=answers[q.question_id]; if(!a) return;
+    items.push({question_id:q.question_id, alt_hint:a.altHint, student_answer:a.text.slice(0,6000),
+      alternatives:q.alternatives.map(al=>({alt_id:al.alt_id, question:al.text, model_answer:al.answer_key.model_answer, criteria:al.answer_key.criteria}))});
+  }));
+  log(`${sid}: Call 2: grading ${items.length} attempted question(s) (${routing.filter(r=>r.how&&r.how!=="label").length} routed by similarity)…`);
+  let ai={results:[],overall_feedback:""};
+  try{ if(items.length) ai=await S.sample.json(evalPrompt(items),{modelTier:"default"}); }
+  catch(e){ log(`${sid}: grading failed: ${e.message||e.code}`,"red"); return; }
+  const scriptNorm=normText(text);
+  const questions=[];
+  bp.sections.forEach(sec=>sec.questions.forEach(q=>{
+    const res=(ai.results||[]).find(r=>String(r.question_id)===q.question_id);
+    const attempted=!!answers[q.question_id];
+    const alt=q.alternatives.find(a=>res&&a.alt_id===String(res.alt_id)) || q.alternatives.find(a=>a.alt_id===answers[q.question_id]?.altHint) || q.alternatives[0];
+    const criteria=alt.answer_key.criteria.map(c=>{
+      const s=res?.criteria_scores?.find(x=>String(x.id)===c.id)||{};
+      const aw=Math.max(0,Math.min(c.marks,num(s.awarded)));
+      let flag=null;
+      if(aw>0 && s.evidence && !scriptNorm.includes(normText(s.evidence).slice(0,50))) flag="Quoted evidence not found in script";
+      if(aw>0 && !s.evidence) flag="Marks given without evidence";
+      return {id:c.id, point:c.point, max:c.marks, awarded:attempted?aw:0, evidence:s.evidence||null, reason:s.reason||"", flag};
+    });
+    questions.push({question_id:q.question_id, section_id:sec.section_id, alt_id:alt.alt_id, attempted, max:q.max_marks,
+      answer:answers[q.question_id]?.text||"", criteria, feedback:res?.feedback||(attempted?"":"Not attempted.")});
+  }));
+  const {total,max}=scoreEvaluation(bp,questions);
+  const rec={key, blueprintId:bp.id, examTitle:bp.exam_title, studentId:sid, studentName:name, scriptHash,
+    routing, ai:{questions:JSON.parse(JSON.stringify(questions)),total,overall:ai.overall_feedback||""},
+    final:{questions,total,max,overall:ai.overall_feedback||""}, status:"ai_evaluated", edits:[], createdAt:Date.now()};
+  await Store.set("evals",key,rec);
+  const flags=questions.reduce((n,q)=>n+q.criteria.filter(c=>c.flag).length,0);
+  log(`${sid}: scored ${total}/${max}${flags?`, ${flags} item(s) flagged for review`:""}.`, flags?"warn":"ok");
+}
+
+/* ============================ FACULTY REVIEW ACTIONS ============================ */
+function curEval(){ return S.cache.evals[S.reviewKey]; }
+function editCrit(qi,ci,val){
+  const e=curEval(); const c=e.final.questions[qi].criteria[ci]; const old=c.awarded;
+  c.awarded=Math.max(0,Math.min(c.max,num(val)));
+  if(old!==c.awarded) e.edits.push({q:e.final.questions[qi].question_id, crit:c.id, from:old, to:c.awarded, at:Date.now()});
+  const bp=S.cache.blueprints[e.blueprintId]; const {total}=scoreEvaluation(bp,e.final.questions); e.final.total=total;
+  if(e.status==="approved"||e.status==="published") e.status = e.status==="published"?"revised":"under_review";
+  render();
+}
+function editFeedback(qi,val){ const e=curEval(); if(qi===-1) e.final.overall=val; else e.final.questions[qi].feedback=val; }
+async function saveEval(status){
+  const e=curEval(); if(status) e.status=status; else if(e.status==="ai_evaluated") e.status="under_review";
+  if(status==="published") e.publishedAt=Date.now();
+  if(status==="approved") e.approvedAt=Date.now();
+  await Store.set("evals",e.key,e); toast(status==="published"?"Result published. The student can now see it.":status==="approved"?"Result approved.":"Changes saved."); render();
+}
+
+/* ============================ QUERIES ============================ */
+async function raiseQuery(evalKey){
+  const qid=document.getElementById("qq").value, msg=document.getElementById("qmsg").value.trim();
+  if(!msg){ toast("Write your question first."); return; }
+  const id=await sha(evalKey+qid+msg+Date.now());
+  const e=S.cache.evals[evalKey];
+  await Store.set("queries",id,{id,evalKey,studentId:e.studentId,examTitle:e.examTitle,questionId:qid,message:msg,status:"open",replies:[],createdAt:Date.now()});
+  toast("Query sent to your faculty."); render();
+}
+async function replyQuery(id,resolve){
+  const q=S.cache.queries[id]; const ta=document.getElementById("rep-"+id); const msg=ta?ta.value.trim():"";
+  if(msg) q.replies.push({by:"faculty",msg,at:Date.now()});
+  q.status = resolve? "resolved" : (msg? "answered": q.status);
+  await Store.set("queries",id,q); toast(resolve?"Query resolved.":"Reply sent."); render();
+}
+
+/* ============================ DEMO DATA ============================ */
+const DEMO={
+qp:`INDIAN SCHOOL OF BUSINESS
+Corporate Finance - Mid Term Quiz            Maximum Marks: 20
+
+Section A (Answer all questions)
+1. Define the Weighted Average Cost of Capital (WACC). (2 marks)
+2. State two limitations of the payback period method. (2 marks)
+
+Section B (Answer any two of the following three questions)
+3. Explain the Modigliani-Miller proposition I without taxes. (6 marks)
+4. A project costs 100 and returns 60 at the end of years 1 and 2. At a 10% discount rate, compute its NPV and state whether to accept it. (6 marks)
+5. (a) Explain operating leverage. (6 marks)
+   OR
+   (b) Explain financial leverage. (6 marks)`,
+key:`ANSWER KEY
+1. WACC is the average of the costs of the firm's sources of capital (debt and equity) [1 mark], weighted by their proportions in the capital structure, ideally at market values [1 mark].
+2. Any two, 1 mark each: ignores time value of money; ignores cash flows after the payback period; arbitrary cut-off.
+3. In perfect capital markets without taxes, firm value is independent of capital structure [3 marks]. Reason: investors can replicate leverage themselves (homemade leverage), so arbitrage keeps values equal [2 marks]. Implication: WACC stays constant as leverage changes [1 mark].
+4. PV = 60/1.1 + 60/1.21 = 54.55 + 49.59 = 104.13 [2 marks method, 1 mark PV value]. NPV = 104.13 - 100 = 4.13 [2 marks]. Accept since NPV > 0 [1 mark].
+5(a). Operating leverage: use of fixed operating costs [2]; magnifies effect of sales changes on EBIT [2]; measured by DOL = %change EBIT / %change sales [2].
+5(b). Financial leverage: use of fixed-charge financing such as debt [2]; magnifies effect of EBIT changes on EPS [2]; measured by DFL = %change EPS / %change EBIT [2].`,
+script:`Q1. WACC means the weighted cost of all funds the company uses, equity and debt, weighted by how much of each the firm has.
+
+Q2. Payback ignores the time value of money. It also ignores what happens after the payback period.
+
+Q4. PV of inflows = 60/1.1 + 60/1.1^2 = 54.5 + 49.6 = 104.1. NPV = 4.1, positive so we should accept.
+
+Ans 5(b) Financial leverage is when the firm uses debt which has fixed interest. Because of this, a change in EBIT causes a bigger change in EPS.
+
+Q3. MM says that capital structure does not matter for value when there are no taxes, since investors can borrow on their own.`};
+function loadDemo(){ S.work.qp=DEMO.qp; S.work.key=DEMO.key; S.work.demoScript=DEMO.script; render(); }
+
+/* ============================ RENDER ============================ */
+const STATUS={ai_evaluated:["AI evaluated","info"],under_review:["Under review","warn"],approved:["Approved","violet"],published:["Published","ok"],revised:["Revised after publishing","red"]};
+const stPill=s=>{ const v=STATUS[s]||[s,""]; return `<span class="pill ${v[1]}">${v[0]}</span>`; };
+function setRole(r){ S.role=r; S.tab= r==="faculty"?"dashboard":"results"; document.getElementById("roleF").classList.toggle("on",r==="faculty"); document.getElementById("roleS").classList.toggle("on",r==="student"); render(); }
+function setTab(t){ S.tab=t; render(); window.scrollTo(0,0); }
+function renderTabs(){
+  const t = S.role==="faculty"? [["dashboard","Dashboard"],["evaluate","Evaluate"],["review","Review & publish"],["queries","Student queries"],["settings","Gemini settings"]] : [["results","My results"],["myqueries","My queries"]];
+  const open=Object.values(S.cache.queries).filter(q=>q.status==="open").length;
+  document.getElementById("tabs").innerHTML=t.map(([k,l])=>`<button class="${S.tab===k?"on":""}" onclick="setTab('${k}')">${l}${k==="queries"&&open?` <span class="pill red">${open}</span>`:""}</button>`).join("");
+}
+function render(){
+  if(!S.ready) return;
+  renderTabs();
+  const v={settings:vSettings,dashboard:vDash,evaluate:vEval,review:vReview,queries:vQueries,results:vResults,myqueries:vMyQueries}[S.tab];
+  const app=document.getElementById("app"); const keep=captureInputs(); app.innerHTML=v(); restoreInputs(keep);
+}
+function captureInputs(){ const o={}; document.querySelectorAll("#app [data-keep]").forEach(el=>o[el.id]=el.value); return o; }
+function restoreInputs(o){ for(const id in o){ const el=document.getElementById(id); if(el&&!el.value) el.value=o[id]; } }
+
+function vDash(){
+  const ev=Object.values(S.cache.evals), q=Object.values(S.cache.queries);
+  const pub=ev.filter(e=>e.status==="published").length, pend=ev.filter(e=>e.status!=="published").length;
+  const bps=Object.values(S.cache.blueprints);
+  const byExam={}; ev.forEach(e=>{ (byExam[e.blueprintId]=byExam[e.blueprintId]||[]).push(e); });
+  return `<h1>Faculty dashboard</h1>
+  <div class="stats">
+    <div class="stat" style="--c:var(--info)"><div class="n">${ev.length}</div><div class="l">Papers evaluated</div></div>
+    <div class="stat" style="--c:var(--ok)"><div class="n">${pub}</div><div class="l">Results declared</div></div>
+    <div class="stat" style="--c:var(--warn)"><div class="n">${pend}</div><div class="l">Awaiting your approval</div></div>
+    <div class="stat" style="--c:var(--pencil)"><div class="n">${q.filter(x=>x.status==="open").length}</div><div class="l">Open student queries</div></div>
+    <div class="stat" style="--c:var(--violet)"><div class="n">${bps.length}</div><div class="l">Cached exam blueprints</div></div>
+  </div>
+  <div class="panel"><h2>Exams</h2>
+  ${bps.length? `<div class="tbl-wrap"><table><thead><tr><th>Exam</th><th>Max marks</th><th>Blueprint</th><th>Scripts</th><th>Average</th><th>Published</th></tr></thead><tbody>
+  ${bps.map(b=>{ const es=byExam[b.id]||[]; const avg=es.length? r2(es.reduce((s,e)=>s+e.final.total,0)/es.length):"–";
+    return `<tr><td>${esc(b.exam_title)}</td><td>${b.printed_max_marks??"?"}</td><td>${b.verified?'<span class="pill ok">Confirmed</span>':'<span class="pill warn">Needs confirming</span>'}</td><td>${es.length}</td><td>${avg}</td><td>${es.filter(e=>e.status==="published").length}/${es.length}</td></tr>`;}).join("")}
+  </tbody></table></div>` : `<p class="muted">No exams yet. Go to <b>Evaluate</b> to upload a question paper and answer key.</p><button class="btn primary" onclick="setTab('evaluate')">Start an evaluation</button>`}
+  </div>`;
+}
+
+const ACCEPT=".txt,.md,.pdf,.png,.jpg,.jpeg,.webp";
+function fileBtn(id,target){ return `<input type="file" id="${id}" accept="${ACCEPT}" class="small" ${S.work.reading?"disabled":""} onchange="loadInto(this,'${target}')">`; }
+async function loadInto(inp,target){ const f=inp.files[0]; if(!f) return; S.work.reading=true; render();
+  try{ const t=await readFile(f); if(target==="stext"){ S.work.demoScript=t; const el=document.getElementById("stext"); if(el) el.value=""; } else S.work[target]=t; }
+  catch(e){ const m=e.message||e.code||String(e); toast(m); log(f.name+": "+m,"red"); }
+  finally{ S.work.reading=false; render(); } }
+
+function vEval(){
+  const w=S.work, bp=w.bp;
+  return `<div class="row" style="justify-content:space-between"><h1>Evaluate answer scripts</h1><button class="btn sm" onclick="loadDemo()">Load sample exam</button></div>
+  ${S.sample?"":`<div class="note warn">Gemini isn't connected. See <a href="#" onclick="setTab('settings');return false">Gemini settings</a> for what the deployment needs.</div>`}
+  <div class="panel">
+    <div class="step"><span class="num">1</span><h2>Question paper and answer key</h2></div>
+    ${w.reading?'<div class="note info"><span class="spinner"></span> Reading file. Scanned pages are being transcribed; see Activity below.</div>':""}
+    <p class="muted small">Extracted once per paper and key, then cached. Re-uploading the same pair reuses the stored blueprint.</p>
+    <div class="grid g2">
+      <div><label for="qp">Question paper</label>${fileBtn("qpf","qp")}<textarea id="qp" oninput="S.work.qp=this.value" placeholder="Paste the question paper text, or upload a .txt or .pdf">${esc(w.qp)}</textarea></div>
+      <div><label for="key">Answer key</label>${fileBtn("keyf","key")}<textarea id="key" oninput="S.work.key=this.value" placeholder="Paste the answer key, including mark splits if you have them">${esc(w.key)}</textarea></div>
+    </div>
+    <div class="row" style="margin-top:.7rem"><button class="btn primary" ${w.busy?"disabled":""} onclick="extractBlueprint()">${w.busy?'<span class="spinner"></span> Working…':"Extract blueprint"}</button></div>
+    ${bp? vBlueprint(bp):""}
+  </div>
+  <div class="panel" ${bp&&bp.verified?"":'style="opacity:.55"'}>
+    <div class="step"><span class="num">2</span><h2>Student answer scripts</h2></div>
+    <p class="muted small">Evaluate one script, or select several files at once. For batch uploads, each file name is used as the roll number (e.g. <code>21BM042.txt</code>).</p>
+    <div class="grid g2">
+      <div><label for="sid">Roll number</label><input type="text" id="sid" data-keep placeholder="e.g. 21BM042">
+           <label for="sname">Student name</label><input type="text" id="sname" data-keep placeholder="Optional"></div>
+      <div><label for="scriptFiles">Or upload many scripts</label><input type="file" id="scriptFiles" multiple accept="${ACCEPT}" class="small"><div class="small muted">Scanned or handwritten PDFs and photos are transcribed automatically.</div></div>
+    </div>
+    <label for="stext">Answer script</label>${fileBtn("sf","stext")}
+    <textarea id="stext" data-keep placeholder="Paste the typed answer script. Label answers like Q1, Q2, Ans 3 where possible; unlabelled answers are matched to questions automatically.">${esc(w.demoScript||"")}</textarea>
+    <div class="row" style="margin-top:.7rem"><button class="btn red" ${!bp||!bp.verified||w.busy?"disabled":""} onclick="evaluateScripts()">${w.busy?'<span class="spinner"></span> Evaluating…':"Evaluate"}</button>
+    <span class="muted small">Results go to Review & publish. Students see nothing until you publish.</span></div>
+  </div>
+  <div class="panel"><h3>Activity</h3><div class="log">${w.log.length? w.log.map(l=>`<div><span class="pill ${l.kind}">${l.t}</span> ${esc(l.msg)}</div>`).join(""):'<span class="muted small">Nothing yet.</span>'}</div></div>`;
+}
+
+function vBlueprint(bp){
+  const counts=bp.sections.reduce((n,s)=>n+s.questions.length,0);
+  return `<hr style="border:0;border-top:1px solid var(--line);margin:1rem 0">
+  <div class="row" style="justify-content:space-between"><h3>${esc(bp.exam_title)}</h3>
+    <div class="row">${S.work.bpCached?'<span class="pill violet">From cache</span>':'<span class="pill info">Newly extracted</span>'}${bp.verified?'<span class="pill ok">Confirmed</span>':'<span class="pill warn">Not confirmed</span>'}</div></div>
+  <div class="stats" style="margin-top:.5rem">
+    <div class="stat" style="--c:var(--ink)"><div class="n">${bp.printed_max_marks??"?"}</div><div class="l">Maximum marks on paper</div></div>
+    <div class="stat" style="--c:${bp.errors.length?"var(--pencil)":"var(--ok)"}"><div class="n">${bp.computed_max_marks}</div><div class="l">Computed from questions and choice rules</div></div>
+    <div class="stat" style="--c:var(--info)"><div class="n">${counts}</div><div class="l">Questions in ${bp.sections.length} section(s)</div></div>
+  </div>
+  ${bp.errors.length? `<div class="note red"><b>Fix before evaluating:</b><br>${bp.errors.map(esc).join("<br>")}</div>`:`<div class="note ok">Marks total matches the paper and every answer key adds up to its question.</div>`}
+  ${bp.warnings.length? `<div class="note warn"><b>Check:</b><br>${bp.warnings.map(esc).join("<br>")}</div>`:""}
+  ${bp.sections.map(s=>`<div style="margin:.8rem 0"><b>Section ${esc(s.section_id)}</b> ${esc(s.title)} <span class="pill ${s.selection_rule.type==="any_n"?"violet":""}">${s.selection_rule.type==="any_n"?`Any ${s.selection_rule.n} of ${s.questions.length}`:"All compulsory"}</span>
+   <div class="tbl-wrap"><table><thead><tr><th>Q</th><th>Question</th><th>Marks</th><th>Key criteria</th></tr></thead><tbody>
+   ${s.questions.map(q=>q.alternatives.map((a,ai)=>`<tr><td>${ai===0?esc(q.question_id):""}${q.alternatives.length>1?` <span class="pill violet">${ai===0?"":"OR "}${esc(a.alt_id)}</span>`:""}</td><td>${esc(a.text)}</td><td>${ai===0?q.max_marks:""}</td><td class="small">${a.answer_key.criteria.map(c=>`${esc(c.point)} <b>[${c.marks}]</b>`).join("<br>")}</td></tr>`).join("")).join("")}
+   </tbody></table></div></div>`).join("")}
+  <details><summary>Edit blueprint JSON</summary><textarea id="bpjson" style="min-height:260px;font-family:ui-monospace,monospace">${esc(JSON.stringify({exam_title:bp.exam_title,printed_max_marks:bp.printed_max_marks,sections:bp.sections,extraction_warnings:bp.extraction_warnings},null,2))}</textarea>
+  <button class="btn sm" onclick="saveBlueprintJSON()">Save and re-check totals</button></details>
+  <div class="row" style="margin-top:.8rem">${bp.verified?'<span class="muted small">Confirmed. Reused for every script of this exam.</span>':`<button class="btn green" onclick="confirmBlueprint()">Confirm blueprint</button>`}</div>`;
+}
+
+function vReview(){
+  const ev=Object.values(S.cache.evals).sort((a,b)=>b.createdAt-a.createdAt);
+  if(!ev.length) return `<h1>Review & publish</h1><div class="panel"><p class="muted">No evaluated scripts yet.</p><button class="btn primary" onclick="setTab('evaluate')">Evaluate scripts</button></div>`;
+  if(!S.reviewKey||!S.cache.evals[S.reviewKey]) S.reviewKey=ev[0].key;
+  const e=curEval(), bp=S.cache.blueprints[e.blueprintId];
+  const approvable = ev.filter(x=>x.status!=="published"&&!x.final.questions.some(q=>q.criteria.some(c=>c.flag)));
+  return `<h1>Review & publish</h1>
+  <div class="grid" style="grid-template-columns:minmax(220px,300px) 1fr;align-items:start" id="revgrid">
+  <div class="panel"><h3>Scripts</h3>
+    ${ev.map(x=>{ const fl=x.final.questions.reduce((n,q)=>n+q.criteria.filter(c=>c.flag).length,0);
+      return `<div class="list-item" style="cursor:pointer;${x.key===S.reviewKey?"background:var(--surface2);border-radius:7px;padding-left:.5rem":""}" onclick="S.reviewKey='${x.key}';render()">
+      <div><b>${esc(x.studentId)}</b> ${x.studentName?`<span class="muted small">${esc(x.studentName)}</span>`:""}<div class="small muted">${esc(x.examTitle)}</div>${stPill(x.status)} ${fl?`<span class="pill red">${fl} flag${fl>1?"s":""}</span>`:""}</div>
+      <div class="score">${x.final.total}/${x.final.max}</div></div>`;}).join("")}
+    <button class="btn sm" style="margin-top:.6rem" ${approvable.length?"":"disabled"} onclick="bulkApprove()">Approve ${approvable.length} unflagged</button>
+  </div>
+  <div>
+    <div class="panel">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div><h2>${esc(e.studentId)} ${e.studentName?"· "+esc(e.studentName):""}</h2><div class="muted small">${esc(e.examTitle)}</div><div style="margin-top:.3rem">${stPill(e.status)} ${e.edits.length?`<span class="pill">${e.edits.length} faculty edit(s)</span>`:""}</div></div>
+        <div style="text-align:right"><div class="bigscore">${e.final.total}<span class="muted" style="font-size:1.2rem">/${e.final.max}</span></div><div class="small muted">AI originally: ${e.ai.total}</div></div>
+      </div>
+      <div class="row" style="margin-top:.8rem">
+        <button class="btn" onclick="saveEval()">Save changes</button>
+        <button class="btn" style="border-color:var(--violet);color:var(--violet)" onclick="saveEval('approved')">Approve</button>
+        <button class="btn green" ${e.status==="approved"||e.status==="revised"?"":"disabled"} onclick="saveEval('published')">${e.status==="revised"?"Republish result":"Publish to student"}</button>
+      </div>
+      <p class="small muted">Publishing is only possible after approval. Marks are recalculated in code as you edit; "any N" and OR rules count the best attempts.</p>
+    </div>
+    ${e.final.questions.map((q,qi)=>`<div class="q ${q.counted?"":"notcounted"}">
+      <div class="qhead"><h3>Q ${esc(q.question_id)} ${q.alt_id!==q.question_id?`<span class="pill violet">${esc(q.alt_id)}</span>`:""} ${q.attempted?"":'<span class="pill">Not attempted</span>'} ${q.attempted&&!q.counted?'<span class="pill warn">Not counted (best attempts used)</span>':""}</h3><span class="score">${q.awarded}/${q.max}</span></div>
+      ${q.attempted?`<details><summary class="small">Student answer</summary><div class="answer">${esc(q.answer)}</div></details>`:""}
+      ${q.criteria.map((c,ci)=>`<div class="crit"><div><div>${esc(c.point)}</div>${c.evidence?`<div class="evidence">“${esc(c.evidence)}”</div>`:""}<div class="small muted">${esc(c.reason)}</div>${c.flag?`<span class="pill red">${esc(c.flag)}</span>`:""}</div>
+        <div><input type="number" min="0" max="${c.max}" step="0.5" value="${c.awarded}" aria-label="Marks for ${esc(c.id)}" onchange="editCrit(${qi},${ci},this.value)"> <span class="small muted">/ ${c.max}</span></div></div>`).join("")}
+      <label for="fb${qi}">Feedback to student</label><textarea id="fb${qi}" style="min-height:60px" oninput="editFeedback(${qi},this.value)">${esc(q.feedback)}</textarea>
+    </div>`).join("")}
+    <div class="panel"><label for="ovf">Overall feedback</label><textarea id="ovf" style="min-height:70px" oninput="editFeedback(-1,this.value)">${esc(e.final.overall)}</textarea></div>
+    ${e.routing&&e.routing.length?`<details class="panel"><summary>How answers were matched to questions</summary><table><tbody>${e.routing.map(r=>`<tr><td>${esc(r.label)}</td><td>${r.to?esc(r.to):'<span class="pill red">Unmatched</span>'}</td><td class="muted small">${esc(r.how||"")}</td></tr>`).join("")}</tbody></table></details>`:""}
+  </div></div>
+  <style>@media(max-width:760px){#revgrid{grid-template-columns:1fr!important}}</style>`;
+}
+async function bulkApprove(){
+  const ev=Object.values(S.cache.evals).filter(x=>x.status!=="published"&&!x.final.questions.some(q=>q.criteria.some(c=>c.flag)));
+  for(const e of ev){ e.status="approved"; e.approvedAt=Date.now(); await Store.set("evals",e.key,e); }
+  toast(`${ev.length} result(s) approved.`); render();
+}
+
+function vQueries(){
+  const qs=Object.values(S.cache.queries).sort((a,b)=>b.createdAt-a.createdAt);
+  return `<h1>Student queries</h1>${qs.length? qs.map(q=>`<div class="panel">
+    <div class="row" style="justify-content:space-between"><div><b>${esc(q.studentId)}</b> on ${q.questionId==="all"?"the whole paper":"Q "+esc(q.questionId)} <span class="muted small">· ${esc(q.examTitle)}</span></div>
+    <span class="pill ${q.status==="open"?"red":q.status==="answered"?"info":"ok"}">${q.status[0].toUpperCase()+q.status.slice(1)}</span></div>
+    <div class="thread"><div class="msg"><b>Student</b><br>${esc(q.message)}</div>${q.replies.map(r=>`<div class="msg"><b>Faculty</b><br>${esc(r.msg)}</div>`).join("")}</div>
+    ${q.status!=="resolved"?`<textarea id="rep-${q.id}" style="min-height:60px" placeholder="Reply to the student"></textarea>
+    <div class="row" style="margin-top:.5rem"><button class="btn primary sm" onclick="replyQuery('${q.id}',false)">Send reply</button><button class="btn sm" onclick="replyQuery('${q.id}',true)">Reply and resolve</button>
+    <button class="btn sm" onclick="S.reviewKey='${q.evalKey}';setTab('review')">Open in review to re-mark</button></div>`:""}
+  </div>`).join("") : `<div class="panel"><p class="muted">No queries yet. Students can raise them from their published results.</p></div>`}`;
+}
+
+/* ---------- Student views ---------- */
+function studentPicker(){
+  const ids=[...new Set(Object.values(S.cache.evals).map(e=>e.studentId))];
+  return `<div class="panel"><label for="stuid">Signed in as (prototype: choose a roll number)</label>
+  <div class="row"><input type="text" id="stuid" list="stulist" value="${esc(S.studentId)}" placeholder="Your roll number" style="max-width:260px" onchange="S.studentId=this.value.trim();render()"><datalist id="stulist">${ids.map(i=>`<option value="${esc(i)}">`).join("")}</datalist></div></div>`;
+}
+function vResults(){
+  const mine=Object.values(S.cache.evals).filter(e=>e.studentId===S.studentId&&(e.status==="published"));
+  return `<h1>My results</h1>${studentPicker()}
+  ${!S.studentId?'<p class="muted">Enter your roll number to see your results.</p>': !mine.length? `<div class="panel"><p class="muted">No results have been declared for you yet. They appear here once your faculty publishes them.</p></div>`:
+  mine.map(e=>`<div class="panel">
+    <div class="row" style="justify-content:space-between;align-items:flex-start"><div><h2>${esc(e.examTitle)}</h2><span class="pill ok">Declared</span></div>
+    <div style="text-align:right"><div class="bigscore">${e.final.total}<span class="muted" style="font-size:1.2rem">/${e.final.max}</span></div><div class="small muted">${Math.round(e.final.total/e.final.max*100)}%</div></div></div>
+    ${e.final.overall?`<div class="note info">${esc(e.final.overall)}</div>`:""}
+    <div class="tbl-wrap"><table><thead><tr><th>Question</th><th>Marks</th><th>Feedback</th></tr></thead><tbody>
+    ${e.final.questions.map(q=>`<tr><td>Q ${esc(q.question_id)}${q.alt_id!==q.question_id?` (${esc(q.alt_id)})`:""}${q.attempted&&!q.counted?'<br><span class="pill warn">Not counted</span>':""}</td><td class="score">${q.attempted?q.awarded+"/"+q.max:"Not attempted"}</td>
+      <td class="small">${esc(q.feedback)}<details><summary class="small muted">Marking points</summary>${q.criteria.map(c=>`<div>${c.awarded>=c.max?'<span class="pill ok">Full</span>':c.awarded>0?'<span class="pill warn">Part</span>':'<span class="pill">Not met</span>'} ${esc(c.point)} <b>${c.awarded}/${c.max}</b></div>`).join("")}</details></td></tr>`).join("")}
+    </tbody></table></div>
+    <h3 style="margin-top:1rem">Ask your faculty about this result</h3>
+    <div class="grid g2"><div><label for="qq">About</label><select id="qq"><option value="all">Whole paper</option>${e.final.questions.map(q=>`<option value="${esc(q.question_id)}">Q ${esc(q.question_id)}</option>`).join("")}</select></div></div>
+    <label for="qmsg">Your question</label><textarea id="qmsg" style="min-height:70px" placeholder="Explain which part of the evaluation you'd like reviewed and why"></textarea>
+    <button class="btn primary" style="margin-top:.5rem" onclick="raiseQuery('${e.key}')">Send query</button>
+  </div>`).join("")}`;
+}
+function vMyQueries(){
+  const qs=Object.values(S.cache.queries).filter(q=>q.studentId===S.studentId).sort((a,b)=>b.createdAt-a.createdAt);
+  return `<h1>My queries</h1>${studentPicker()}${!S.studentId?"":qs.length? qs.map(q=>`<div class="panel"><div class="row" style="justify-content:space-between"><b>${esc(q.examTitle)} · ${q.questionId==="all"?"Whole paper":"Q "+esc(q.questionId)}</b>
+   <span class="pill ${q.status==="open"?"warn":q.status==="answered"?"info":"ok"}">${q.status==="open"?"Waiting for faculty":q.status[0].toUpperCase()+q.status.slice(1)}</span></div>
+   <div class="thread"><div class="msg"><b>You</b><br>${esc(q.message)}</div>${q.replies.map(r=>`<div class="msg"><b>Faculty</b><br>${esc(r.msg)}</div>`).join("")}</div></div>`).join("") : '<div class="panel"><p class="muted">You haven\'t raised any queries.</p></div>'}`;
+}
+
+/* ---------- Gemini settings ---------- */
+function vSettings(){
+  const c=loadCfg();
+  const modePill = GMODE.mode==="server"?'<span class="pill ok">Connected via server</span>':GMODE.mode==="studio"?'<span class="pill ok">Connected via Google AI Studio</span>':'<span class="pill red">Not connected</span>';
+  return `<h1>Gemini settings</h1>
+  <div class="panel">
+    <div class="row" style="justify-content:space-between"><h3>Connection</h3>${modePill}</div>
+    <p class="small">${esc(GMODE.detail)}</p>
+    ${GMODE.mode==="none"?`<div class="note warn">The API key is managed on the server, never in this page. On Netlify, add <code>GEMINI_API_KEY</code> under Site configuration, Environment variables, then redeploy.</div>`:`<div class="note ok">The API key stays in the backend environment. Nobody using this page can see it.</div>`}
+  </div>
+  <div class="panel"><h3>Models</h3>
+    <div class="grid g3">
+      <div><label for="gext">Call 1: extraction model</label><input type="text" id="gext" value="${esc(c.extract)}"><div class="small muted">Most capable model. Runs once per exam.</div></div>
+      <div><label for="geval">Call 2: evaluation model</label><input type="text" id="geval" value="${esc(c.eval)}"><div class="small muted">Fast, low-cost model. Runs once per script.</div></div>
+      <div><label for="gocr">Scanned-page OCR model</label><input type="text" id="gocr" value="${esc(c.ocr)}"><div class="small muted">Vision model for page images.</div></div>
+    </div>
+    <div class="row" style="margin-top:.8rem"><button class="btn primary" onclick="saveSettings()">Save models</button><button class="btn" ${GMODE.mode==="none"?"disabled":""} onclick="testGemini()">Test connection</button><button class="btn sm" onclick="resetModels()">Use server defaults</button></div>
+    <div id="gtest" class="small" style="margin-top:.6rem"></div>
+  </div>
+  <div class="panel"><h3>Usage this session</h3>
+    <div class="stats">
+      <div class="stat" style="--c:var(--info)"><div class="n">${USAGE.calls}</div><div class="l">Gemini calls</div></div>
+      <div class="stat" style="--c:var(--violet)"><div class="n">${USAGE.inTok.toLocaleString()}</div><div class="l">Input tokens</div></div>
+      <div class="stat" style="--c:var(--pencil)"><div class="n">${USAGE.outTok.toLocaleString()}</div><div class="l">Output tokens (incl. thinking)</div></div>
+      <div class="stat" style="--c:var(--ok)"><div class="n">${USAGE.cached.toLocaleString()}</div><div class="l">Tokens served from Gemini's cache</div></div>
+    </div>
+    <div class="small muted">${Object.entries(USAGE.byModel).map(([m,n])=>esc(m)+": "+n+" call(s)").join(" &nbsp; ")||"No calls yet."}</div>
+  </div>`;
+}
+function saveSettings(){
+  const c={extract:document.getElementById("gext").value.trim()||GDEFAULT.extract,
+    eval:document.getElementById("geval").value.trim()||GDEFAULT.eval,ocr:document.getElementById("gocr").value.trim()||GDEFAULT.ocr};
+  saveCfg(c); toast("Models saved."); render();
+}
+function resetModels(){ try{ localStorage.removeItem(MODEL_PREF_KEY); }catch(e){} toast("Using the server's default models."); render(); }
+async function testGemini(){
+  const out=document.getElementById("gtest"); out.innerHTML='<span class="spinner"></span> Checking…';
+  try{
+    const names=new Set(await listModels());
+    const chk=["gext","geval","gocr"].map(id=>{ const m=document.getElementById(id).value.trim(); return `${names.has(m)?'<span class="pill ok">Available</span>':'<span class="pill red">Not found</span>'} ${esc(m)}`; }).join("<br>");
+    const sug=[...names].filter(n=>/^gemini/.test(n)&&!/embedding|tts|image|audio|live/.test(n)).sort().join(", ");
+    out.innerHTML=`<div class="note ok">Gemini is reachable.</div>${chk}<details style="margin-top:.5rem"><summary>Models available</summary><div class="muted">${esc(sug)}</div></details>`;
+  }catch(e){ out.innerHTML=`<span class="pill red">Check failed</span> ${esc(e.message)}`; }
+}
+
+/* ============================ BOOT ============================ */
+(async function boot(){
+  const withTimeout=(p,ms)=>Promise.race([p,new Promise(r=>setTimeout(()=>r(null),ms))]);
+  if(window.claude&&typeof window.claude.use==="function"){
+    try{ S.db = await withTimeout(window.claude.use("db"),10000); }catch(e){ S.db=null; }
+  }
+  await detectGemini();
+  S.sample=makeGemini();
+  if(!S.sample){ S.tab="settings"; }
+  await loadAll(); S.ready=true; render();
+})();
+</script>
+</body>
+</html>

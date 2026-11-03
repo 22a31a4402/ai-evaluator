@@ -1,0 +1,11 @@
+{
+  "name": "ai-evaluator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI Evaluator for faculty and students: answer-key grading with Gemini, caching, OCR and faculty approval",
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "dev": "netlify dev"
+  }
+}
